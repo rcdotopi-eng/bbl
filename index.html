@@ -81,7 +81,7 @@
 
     <script src="firebase-init.js"></script>
     <script>
-        let googleUser = null;
+        // Global var to store existing DB data
         let existingData = null;
 
         // --- 1. LOGIN ---
@@ -90,36 +90,37 @@
             const txt = document.getElementById('status-text');
             btn.disabled = true; btn.style.opacity = "0.5"; txt.innerText = "Connecting...";
 
-            const provider = new firebase.auth.GoogleAuthProvider();
-            provider.setCustomParameters({ prompt: 'select_account' });
-
-            firebase.auth().signInWithPopup(provider).then((result) => {
-                googleUser = result.user;
-                checkDatabase(googleUser.uid);
+            // FIX 1: Force SignOut first so Account Chooser always appears
+            firebase.auth().signOut().then(() => {
+                const provider = new firebase.auth.GoogleAuthProvider();
+                provider.setCustomParameters({ prompt: 'select_account' });
+                return firebase.auth().signInWithPopup(provider);
+            }).then((result) => {
+                // Login successful, check DB
+                checkDatabase(result.user.uid);
             }).catch((error) => {
-                alert(error.message);
-                btn.disabled = false; btn.style.opacity = "1";
+                alert("Login Error: " + error.message);
+                btn.disabled = false; btn.style.opacity = "1"; txt.innerText = "";
             });
         }
 
-        // --- 2. CHECK DATABASE & REDIRECT ---
+        // --- 2. CHECK DATABASE ---
         function checkDatabase(uid) {
             db.ref('users/' + uid).once('value').then((snapshot) => {
                 document.getElementById('view-login').style.display = 'none';
 
                 if (snapshot.exists()) {
-                    const userData = snapshot.val();
-                    existingData = userData;
-                    localStorage.setItem("taxiUser", JSON.stringify(userData));
+                    existingData = snapshot.val();
+                    localStorage.setItem("taxiUser", JSON.stringify(existingData));
 
-                    // LOGIC: Where to send the user?
-                    if (userData.riderStatus === 'active') {
-                        // SUCCESS: GO TO SCREEN 2
-                        window.location.href = "rider_screen_1.html";
-                    } else if (userData.riderStatus === 'pending') {
+                    // LOGIC: Check Status
+                    if (existingData.riderStatus === 'active') {
+                        // FIX 2: Correct Redirect to Dashboard
+                        window.location.href = "rider_screen_2.html";
+                    } else if (existingData.riderStatus === 'pending') {
                         document.getElementById('view-pending').style.display = 'block';
                     } else {
-                        // User exists but has no Rider status (maybe a Driver account?)
+                        // User exists (e.g. Driver) but not Rider
                         showRegistration(true);
                     }
                 } else {
@@ -131,36 +132,47 @@
 
         function showRegistration(isUpgrade) {
             document.getElementById('view-register').style.display = 'block';
-            document.getElementById('reg-name').value = googleUser.displayName;
-            if(isUpgrade && existingData.phone) {
+            
+            // Get user info safely
+            const user = firebase.auth().currentUser;
+            if(user) {
+                document.getElementById('reg-name').value = user.displayName;
+            }
+
+            if(isUpgrade && existingData && existingData.phone) {
                 document.getElementById('reg-phone').value = existingData.phone;
             }
         }
 
         // --- 3. SUBMIT REGISTRATION ---
         function submitRegistration() {
+            // FIX 3: Get user directly from Auth (safer than variable)
+            const user = firebase.auth().currentUser;
+            if (!user) return alert("Session expired. Please refresh and login again.");
+
             const name = document.getElementById('reg-name').value;
             const phone = document.getElementById('reg-phone').value;
+            
             if(!name || !phone) return alert("Please fill all fields.");
 
             const updates = {
                 name: name,
                 phone: phone,
-                email: googleUser.email,
+                email: user.email,
                 riderStatus: 'pending'
             };
 
+            // If completely new, init wallet
             if(!existingData) {
-                updates.joined = Date.now();
+                updates.joined = firebase.database.ServerValue.TIMESTAMP;
                 updates.wallet = 0; 
             }
 
-            db.ref('users/' + googleUser.uid).update(updates).then(() => {
-                if(existingData) Object.assign(existingData, updates);
-                else existingData = updates;
-                
+            db.ref('users/' + user.uid).update(updates).then(() => {
                 document.getElementById('view-register').style.display = 'none';
                 document.getElementById('view-pending').style.display = 'block';
+            }).catch(err => {
+                alert("Error saving data: " + err.message);
             });
         }
 
@@ -171,9 +183,10 @@
             input.value = v;
         }
 
-        // Auto-Check if already logged in
+        // Auto-Check on Load (Keep user logged in)
         firebase.auth().onAuthStateChanged((user) => {
             if (user) {
+                // If we are on login page but already logged in, check DB immediately
                 checkDatabase(user.uid);
             }
         });
