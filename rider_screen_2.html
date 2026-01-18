@@ -1,0 +1,317 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <title>RideLink - Request Ride</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <meta name="theme-color" content="#007bff">
+    <link rel="stylesheet" href="style.css">
+    
+    <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-app.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-auth.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-database.js"></script>
+
+    <style>
+        .hidden { display: none; }
+        .gps-status { font-size: 12px; margin-top: 5px; color: #666; }
+        .gps-error { color: #dc3545; font-weight: bold; }
+        .gps-success { color: #28a745; font-weight: bold; }
+    </style>
+</head>
+<body>
+
+    <div class="container">
+        
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
+            <h2 style="margin:0;">🚖 RideLink</h2>
+            <button onclick="logout()" style="width: auto; padding: 5px 10px; font-size: 12px; background: #eee; color: #333;">Logout</button>
+        </div>
+
+        <div id="screen-loading" class="card" style="text-align: center;">
+            <p>Checking profile & active rides...</p>
+        </div>
+
+        <div id="screen-form" class="card hidden">
+            <h3>Request a Ride</h3>
+
+            <div class="input-group">
+                <label>Pickup Location</label>
+                <input type="text" id="pickup" placeholder="Enter Pickup Point">
+            </div>
+
+            <div class="input-group">
+                <label>Drop Point</label>
+                <input type="text" id="drop" placeholder="Enter Destination">
+            </div>
+
+            <div class="input-group">
+                <label>Vehicle Type</label>
+                <select id="vehicle">
+                    <option value="Bike">Bike 🏍️</option>
+                    <option value="Rickshaw">Rickshaw 🛺</option>
+                    <option value="Car">Car 🚗</option>
+                </select>
+            </div>
+
+            <div class="input-group">
+                <label>Your Phone</label>
+                <input type="text" id="phone" readonly style="background: #eee; color: #555;">
+            </div>
+
+            <div id="gps-area" style="margin-bottom: 15px;">
+                <p id="gps-msg" class="gps-status">📍 GPS coordinates required</p>
+                <button id="btn-manual-gps" class="btn-primary hidden" onclick="getGPS()" style="padding: 10px; background: #6c757d;">
+                    📍 Click to Fetch GPS Manually
+                </button>
+            </div>
+
+            <div style="display: flex; gap: 10px;">
+                <button id="btn-submit" class="btn-primary" onclick="submitRide()">Submit Request</button>
+                <button id="btn-reset" class="btn-danger" onclick="resetForm()">Reset</button>
+            </div>
+        </div>
+
+        <div id="screen-status" class="card hidden" style="text-align: center;">
+            <div style="font-size: 40px;">✅</div>
+            <h3 style="color: #28a745;">Request Successfully Sent</h3>
+            
+            <div style="background: #f8f9fa; padding: 15px; border-radius: 8px; margin: 15px 0; text-align: left;">
+                <p><strong>Status:</strong> <span style="color: #e67e22; font-weight: bold;">Pending (Waiting for Drivers)</span></p>
+                <p><strong>Pickup:</strong> <span id="lbl-pickup">...</span></p>
+                <p><strong>Drop:</strong> <span id="lbl-drop">...</span></p>
+                <p><strong>Vehicle:</strong> <span id="lbl-vehicle">...</span></p>
+            </div>
+
+            <button disabled style="background: #ddd; color: #555; cursor: default; margin-bottom: 10px;">
+                Submitted (Waiting...)
+            </button>
+            
+            <button class="btn-danger" onclick="cancelCurrentRide()">
+                Cancel Request
+            </button>
+        </div>
+
+    </div>
+
+    <script src="firebase-init.js"></script>
+
+    <script>
+        let currentUser = null;
+        let currentRideId = null;
+        let userProfile = null;
+        let userLocation = null; // Stores {lat, lng}
+
+        // --- 1. AUTH & SAFETY CHECKS ---
+        firebase.auth().onAuthStateChanged((user) => {
+            if (user) {
+                currentUser = user;
+                initialCheck();
+            } else {
+                window.location.href = "index.html";
+            }
+        });
+
+        function initialCheck() {
+            const uid = currentUser.uid;
+            
+            // 1. Get Profile
+            db.ref('users/' + uid).once('value').then(snap => {
+                if (!snap.exists()) return window.location.href = "index.html";
+                
+                userProfile = snap.val();
+
+                // Check Active Status
+                if (userProfile.riderStatus !== 'active') {
+                    alert("Account not active. Please complete registration.");
+                    window.location.href = "index.html";
+                    return;
+                }
+
+                // Check for Existing Active Rides
+                checkForActiveRides();
+            });
+        }
+
+        function checkForActiveRides() {
+            // Query requests where riderId == currentUser AND status != cancelled/completed
+            // Since complex queries need indexes, we will client-filter for this MVP
+            db.ref('requests').orderByChild('riderId').equalTo(currentUser.uid)
+              .limitToLast(1).once('value').then(snap => {
+                
+                let hasActive = false;
+                let activeRideData = null;
+                let activeRideKey = null;
+
+                snap.forEach(child => {
+                    const r = child.val();
+                    if (r.status === 'pending' || r.status === 'accepted' || r.status === 'confirmed') {
+                        hasActive = true;
+                        activeRideData = r;
+                        activeRideKey = child.key;
+                    }
+                });
+
+                document.getElementById('screen-loading').classList.add('hidden');
+
+                if (hasActive) {
+                    // Show Status Screen
+                    currentRideId = activeRideKey;
+                    showStatusScreen(activeRideData);
+                } else {
+                    // Show Form Screen
+                    showFormScreen();
+                }
+            });
+        }
+
+        // --- 2. SCREEN LOGIC ---
+
+        function showFormScreen() {
+            document.getElementById('screen-form').classList.remove('hidden');
+            document.getElementById('screen-status').classList.add('hidden');
+            
+            // Auto-fill phone
+            document.getElementById('phone').value = userProfile.phone || "No Phone Found";
+            
+            // Try auto-fetch GPS immediately
+            getGPS(true); 
+        }
+
+        function showStatusScreen(rideData) {
+            document.getElementById('screen-form').classList.add('hidden');
+            document.getElementById('screen-status').classList.remove('hidden');
+            
+            document.getElementById('lbl-pickup').innerText = rideData.pickup;
+            document.getElementById('lbl-drop').innerText = rideData.drop;
+            document.getElementById('lbl-vehicle').innerText = rideData.vehicle;
+        }
+
+        // --- 3. GPS LOGIC (The Core Requirement) ---
+        
+        function getGPS(isAuto = false) {
+            const msg = document.getElementById('gps-msg');
+            const manualBtn = document.getElementById('btn-manual-gps');
+
+            msg.innerText = isAuto ? "📍 Auto-fetching location..." : "📍 Fetching location...";
+            msg.className = "gps-status";
+            manualBtn.classList.add('hidden');
+
+            if (!navigator.geolocation) {
+                msg.innerText = "❌ GPS not supported";
+                msg.className = "gps-status gps-error";
+                return;
+            }
+
+            // 10 Second Timeout Logic
+            const gpsOptions = { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 };
+
+            navigator.geolocation.getCurrentPosition(
+                (pos) => {
+                    // Success
+                    userLocation = {
+                        lat: pos.coords.latitude,
+                        lng: pos.coords.longitude
+                    };
+                    msg.innerText = "✅ Location Locked";
+                    msg.className = "gps-status gps-success";
+                    manualBtn.classList.add('hidden');
+                }, 
+                (err) => {
+                    // Fail
+                    console.error(err);
+                    userLocation = null;
+                    msg.innerText = "⚠️ GPS Failed. Please click below.";
+                    msg.className = "gps-status gps-error";
+                    manualBtn.classList.remove('hidden'); // Show Manual Button
+                }, 
+                gpsOptions
+            );
+        }
+
+        // --- 4. SUBMIT LOGIC ---
+
+        function submitRide() {
+            // Validate Inputs
+            const pickup = document.getElementById('pickup').value;
+            const drop = document.getElementById('drop').value;
+            const vehicle = document.getElementById('vehicle').value;
+
+            if (!pickup || !drop) return alert("Please fill all fields");
+
+            // Validate GPS
+            if (!userLocation) {
+                alert("GPS Coordinates missing! Please click 'Fetch GPS Manually'.");
+                return;
+            }
+
+            // UI Changes
+            const btnSubmit = document.getElementById('btn-submit');
+            const btnReset = document.getElementById('btn-reset');
+            
+            btnSubmit.innerText = "Sending...";
+            btnSubmit.disabled = true;
+            btnReset.classList.add('hidden');
+
+            // Data Object
+            const requestData = {
+                riderId: currentUser.uid,
+                riderName: userProfile.name,
+                riderPhone: userProfile.phone,
+                pickup: pickup,
+                drop: drop,
+                vehicle: vehicle,
+                pickup_lat: userLocation.lat,
+                pickup_lng: userLocation.lng,
+                status: 'pending',
+                timestamp: firebase.database.ServerValue.TIMESTAMP
+            };
+
+            // Push to DB
+            const newRef = db.ref('requests').push();
+            currentRideId = newRef.key;
+
+            newRef.set(requestData).then(() => {
+                // Success
+                btnSubmit.innerText = "Submit Request";
+                btnSubmit.disabled = false;
+                btnReset.classList.remove('hidden');
+                
+                showStatusScreen(requestData);
+            }).catch(err => {
+                alert("Error: " + err.message);
+                btnSubmit.innerText = "Submit Request";
+                btnSubmit.disabled = false;
+                btnReset.classList.remove('hidden');
+            });
+        }
+
+        function resetForm() {
+            document.getElementById('pickup').value = "";
+            document.getElementById('drop').value = "";
+            getGPS(true); // Retrigger GPS
+        }
+
+        // --- 5. CANCEL LOGIC ---
+
+        function cancelCurrentRide() {
+            if (!currentRideId) return;
+            if (!confirm("Are you sure you want to cancel?")) return;
+
+            db.ref('requests/' + currentRideId).update({
+                status: 'cancelled'
+            }).then(() => {
+                alert("Ride Cancelled");
+                currentRideId = null;
+                showFormScreen(); // Go back to form
+                resetForm();
+            });
+        }
+
+        function logout() {
+            firebase.auth().signOut().then(() => {
+                window.location.href = "index.html";
+            });
+        }
+
+    </script>
+</body>
+</html>
