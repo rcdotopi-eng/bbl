@@ -1,13 +1,13 @@
 /**
  * rider_logic.js
  * Handles Multiple Offers & Active Ride
+ * FIXED: Matches 'screen-status' ID from your HTML
  */
 
 let listeningRideId = null;
 
-// 1. WATCHER: Checks if main file has set a ride ID
+// 1. WATCHER
 setInterval(() => {
-    // We access 'window.currentRideId' which you set to 'var' in the main file
     if (window.currentRideId && window.currentRideId !== listeningRideId) {
         listeningRideId = window.currentRideId;
         startRideListener(listeningRideId);
@@ -23,16 +23,15 @@ function startRideListener(rideId) {
         const ride = snapshot.val();
         if (!ride) return; 
 
-        // Hide Loading Spinner if it exists
-        if(document.getElementById('screen-loading')) {
-            document.getElementById('screen-loading').classList.add('hidden');
-        }
+        // Hide Loading
+        const loader = document.getElementById('screen-loading');
+        if(loader) loader.classList.add('hidden');
 
         // --- STATE MACHINE ---
 
         // A. CONFIRMED (Active Ride)
         if (ride.status === 'confirmed') {
-            hideOffersList(); // Remove the offers list
+            hideOffersList();
             ensureActiveScreenExists();
             updateDriverInfo(ride);
             switchToActiveScreen();
@@ -40,13 +39,12 @@ function startRideListener(rideId) {
 
         // B. PENDING (Waiting for offers)
         else if (ride.status === 'pending') {
-            // CRITICAL CHECK: Are there offers?
             if (ride.offers) {
-                // Yes! Show the list
+                // Show Offers List
                 showOffersList(ride.offers);
             } else {
-                // No offers yet -> Show Waiting Screen
-                showScreen('screen-pending');
+                // No offers yet -> Show "Request Sent" Status Screen
+                showScreen('screen-status'); 
                 hideOffersList();
             }
         }
@@ -66,12 +64,13 @@ function startRideListener(rideId) {
     });
 }
 
-// 3. OFFERS UI (The List)
+// 3. OFFERS UI
 function showOffersList(offersObj) {
-    // 1. Hide the "Waiting" screen
-    document.getElementById('screen-pending').classList.add('hidden');
+    // Hide the 'Status/Pending' screen using the correct ID
+    const pendingScreen = document.getElementById('screen-status');
+    if (pendingScreen) pendingScreen.classList.add('hidden');
     
-    // 2. Build the List Container if it doesn't exist
+    // Create/Show List
     let listContainer = document.getElementById('offers-list-container');
     if (!listContainer) {
         const mainContainer = document.querySelector('.container');
@@ -88,15 +87,14 @@ function showOffersList(offersObj) {
 
     listContainer.classList.remove('hidden');
     const list = document.getElementById('offers-list-items');
-    list.innerHTML = ""; // Clear old list
+    list.innerHTML = ""; 
 
-    // 3. Loop through offers and make HTML cards
     Object.keys(offersObj).forEach(driverId => {
         const offer = offersObj[driverId];
         const item = `
             <div style="background:#f8f9fa; border:1px solid #ddd; padding:15px; border-radius:8px; margin-bottom:10px;">
                 <div style="display:flex; justify-content:space-between; align-items:center;">
-                    <div style="text-align:left;">
+                    <div>
                         <strong style="font-size:16px;">${offer.driverName}</strong><br>
                         <span style="font-size:12px; color:#666;">${offer.vehicleModel} (${offer.vehiclePlate})</span>
                     </div>
@@ -104,7 +102,7 @@ function showOffersList(offersObj) {
                         <div style="font-size:18px; font-weight:bold; color:#28a745;">Rs. ${offer.price}</div>
                     </div>
                 </div>
-                <button onclick="confirmOffer('${driverId}')" style="width:100%; margin-top:10px; background:#28a745; color:white; border:none; padding:10px; border-radius:5px; font-weight:bold; cursor:pointer;">
+                <button onclick="confirmOffer('${driverId}')" style="width:100%; margin-top:10px; background:#28a745; color:white; border:none; padding:10px; border-radius:5px; font-weight:bold;">
                     Accept This Offer
                 </button>
             </div>
@@ -118,18 +116,14 @@ function hideOffersList() {
     if(el) el.classList.add('hidden');
 }
 
-// 4. CONFIRM OFFER ACTION
-// This function runs when Rider clicks "Accept This Offer"
+// 4. CONFIRM ACTION
 window.confirmOffer = function(driverId) {
     if(!confirm("Confirm this driver?")) return;
 
     const rideId = window.currentRideId;
-    
-    // 1. Get the specific offer details
     firebase.database().ref(`requests/${rideId}/offers/${driverId}`).once('value').then(snap => {
         const offer = snap.val();
         
-        // 2. Lock the ride: Update status to 'confirmed' and save driver info
         firebase.database().ref(`requests/${rideId}`).update({
             status: 'confirmed',
             driverId: driverId,
@@ -142,7 +136,7 @@ window.confirmOffer = function(driverId) {
     });
 };
 
-// 5. ACTIVE SCREEN HELPERS
+// 5. HELPER FUNCTIONS
 function ensureActiveScreenExists() {
     if (document.getElementById('screen-active')) return;
     const container = document.querySelector('.container');
@@ -174,10 +168,13 @@ function updateDriverInfo(ride) {
 }
 
 function switchToActiveScreen() {
-    ['screen-form', 'screen-pending', 'screen-loading'].forEach(id => {
+    // Hide all other screens using ID array
+    ['screen-form', 'screen-status', 'screen-loading'].forEach(id => {
         const el = document.getElementById(id);
         if(el) el.classList.add('hidden');
     });
+    
+    // Show active screen
     const active = document.getElementById('screen-active');
     if(active) active.classList.remove('hidden');
 }
