@@ -130,14 +130,16 @@ window.confirmOffer = function(driverId) {
         const offer = snap.val();
         
         firebase.database().ref(`requests/${rideId}`).update({
-            status: 'confirmed',
-            driverId: driverId,
-            driverName: offer.driverName,
-            driverPhone: offer.driverPhone,
-            vehicleModel: offer.vehicleModel,
-            vehiclePlate: offer.vehiclePlate,
-            price: offer.price
-        });
+    status: 'confirmed',
+    driverId: driverId,
+    driverName: offer.driverName,
+    driverPhone: offer.driverPhone,
+    vehicleModel: offer.vehicleModel,
+    vehiclePlate: offer.vehiclePlate,
+    price: offer.price,
+    confirmedAt: firebase.database.ServerValue.TIMESTAMP
+});
+
     });
 };
 
