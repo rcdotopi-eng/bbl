@@ -125,7 +125,12 @@
                     window.location.href = "index.html";
                     return;
                 }
-
+// 🚫 Block ride if wallet < 250
+if (!userProfile.wallet || userProfile.wallet < 250) {
+    alert("❌ Insufficient wallet balance.\nMinimum Rs.250 required to book a ride.");
+    window.location.href = "wallet.html"; // or show message
+    return;
+}
                 // Check for Existing Active Rides
                 checkForActiveRides();
             });
