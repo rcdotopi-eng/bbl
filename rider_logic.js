@@ -51,16 +51,21 @@ function startRideListener(rideId) {
 
         // C. COMPLETED
         else if (ride.status === 'completed') {
-            alert("✅ Ride Completed!");
-            rideRef.off();
-            window.location.reload();
-        }
-        
-        // D. CANCELLED
-        else if (ride.status === 'cancelled') {
-            alert("❌ Ride Cancelled.");
-            window.location.reload();
-        }
+    alert("✅ Ride Completed!");
+    rideRef.off();
+    window.currentRideId = null;
+    showFormScreen();
+}
+
+else if (
+    ride.status === 'cancelled_by_rider' ||
+    ride.status === 'cancelled_by_driver'
+) {
+    alert("❌ Ride Cancelled.");
+    rideRef.off();
+    window.currentRideId = null;
+    showFormScreen();
+}
     });
 }
 
