@@ -12,8 +12,8 @@ const firebaseConfig = {
 };
 
 // 2. SAFETY CHECK & INITIALIZATION
-let db, auth;
-
+window.db = null;
+window.auth = null;
 if (typeof firebase === 'undefined') {
     console.error("❌ CRITICAL ERROR: Firebase SDK not loaded. Check your internet or script tags.");
     alert("System Error: Could not connect to Google Services.");
@@ -24,8 +24,7 @@ if (typeof firebase === 'undefined') {
     }
     
     // Define global variables safely
-    db = firebase.database();
-    auth = firebase.auth();
-    
+   window.db = firebase.database();
+window.auth = firebase.auth();
     console.log("✅ Firebase Initialized Successfully");
 }
