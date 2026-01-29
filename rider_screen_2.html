@@ -64,10 +64,18 @@
                 </button>
             </div>
 
-            <div style="display: flex; gap: 10px;">
-                <button id="btn-submit" class="btn-primary" onclick="submitRide()">Submit Request</button>
-                <button id="btn-reset" class="btn-danger" onclick="resetForm()">Reset</button>
-            </div>
+            <div style="display: flex; gap: 10px; flex-wrap: wrap;">
+    <button id="btn-submit" class="btn-primary" onclick="submitRide()">Submit Request</button>
+    <button id="btn-reset" class="btn-danger" onclick="resetForm()">Reset</button>
+    <button id="historyBtn" class="btn-secondary">Ride History</button>
+</div>
+
+<!-- Add this right below as the container for history -->
+<div id="historyContainer" class="card hidden" style="margin-top: 20px; padding: 10px;">
+    <h3>Your Ride History</h3>
+    <ul id="rideList" style="list-style: none; padding: 0;"></ul>
+</div>
+
         </div>
 
         <div id="screen-status" class="card hidden" style="text-align: center;">
@@ -352,6 +360,48 @@ if (!userProfile.wallet || userProfile.wallet < 250) {
                 window.location.href = "index.html";
             });
         }
+document.getElementById('historyBtn').addEventListener('click', async () => {
+    const historyContainer = document.getElementById('historyContainer');
+    const rideList = document.getElementById('rideList');
+
+    // Toggle visibility
+    historyContainer.classList.toggle('hidden');
+
+    // Clear previous list
+    rideList.innerHTML = '';
+
+    if (!currentUser) return;
+
+    // Fetch rides from Firebase Realtime Database
+    db.ref('requests').orderByChild('riderId').equalTo(currentUser.uid).once('value').then(snapshot => {
+        const rides = [];
+        snapshot.forEach(child => {
+            const ride = child.val();
+            if (ride.status === 'completed' || ride.status.startsWith('cancelled')) {
+                rides.push(ride);
+            }
+        });
+
+        if (rides.length === 0) {
+            rideList.innerHTML = "<li>No completed or cancelled rides yet.</li>";
+            return;
+        }
+
+        rides.sort((a,b) => b.timestamp - a.timestamp); // latest first
+
+        rides.forEach(ride => {
+            const li = document.createElement('li');
+            li.style.padding = "8px 0";
+            li.style.borderBottom = "1px solid #eee";
+            li.innerHTML = `
+                <strong>${ride.status.toUpperCase()}</strong> - ${ride.pickup} → ${ride.drop} 
+                ${ride.cancelReason ? `<em>(Reason: ${ride.cancelReason})</em>` : ''}
+                <br><small>${new Date(ride.timestamp).toLocaleString()}</small>
+            `;
+            rideList.appendChild(li);
+        });
+    });
+});
 
     </script>
 </body>
