@@ -295,13 +295,46 @@
 
         function cancelCurrentRide() {
     if (!currentRideId) return;
-    if (!confirm("Are you sure you want to cancel?")) return;
+    if (!confirm("Are you sure you want to cancel this ride?")) return;
 
-    db.ref('requests/' + currentRideId).update({
-        status: 'cancelled_by_rider',
-        cancelledAt: firebase.database.ServerValue.TIMESTAMP
-    }).then(() => {
-        alert("Ride Cancelled");
+    const uid = currentUser.uid;
+
+    // 1️⃣ Get ride data first
+    db.ref('requests/' + currentRideId).once('value').then(snapshot => {
+        const ride = snapshot.val();
+        if (!ride) return;
+
+        // 2️⃣ If ride was CONFIRMED → apply penalty
+        if (ride.status === 'confirmed') {
+
+            // Deduct Rs.250 safely from wallet
+            db.ref('users/' + uid + '/wallet').transaction(balance => {
+                if (balance >= 250) {
+                    return balance - 250;
+                }
+                return balance;
+            });
+
+            // Update ride with penalty info
+            db.ref('requests/' + currentRideId).update({
+                status: 'cancelled_by_rider',
+                penaltyApplied: 250,
+                cancelledAt: firebase.database.ServerValue.TIMESTAMP
+            });
+
+            alert("❌ Ride cancelled. Rs.250 penalty applied.");
+
+        } else {
+            // 3️⃣ Pending / not confirmed → NO penalty
+            db.ref('requests/' + currentRideId).update({
+                status: 'cancelled_by_rider',
+                cancelledAt: firebase.database.ServerValue.TIMESTAMP
+            });
+
+            alert("Ride cancelled.");
+        }
+
+        // 4️⃣ Reset UI
         currentRideId = null;
         showFormScreen();
         resetForm();
