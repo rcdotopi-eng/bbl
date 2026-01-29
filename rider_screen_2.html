@@ -294,18 +294,20 @@
         // --- 5. CANCEL LOGIC ---
 
         function cancelCurrentRide() {
-            if (!currentRideId) return;
-            if (!confirm("Are you sure you want to cancel?")) return;
+    if (!currentRideId) return;
+    if (!confirm("Are you sure you want to cancel?")) return;
 
-            db.ref('requests/' + currentRideId).update({
-                status: 'cancelled'
-            }).then(() => {
-                alert("Ride Cancelled");
-                currentRideId = null;
-                showFormScreen(); // Go back to form
-                resetForm();
-            });
-        }
+    db.ref('requests/' + currentRideId).update({
+        status: 'cancelled_by_rider',
+        cancelledAt: firebase.database.ServerValue.TIMESTAMP
+    }).then(() => {
+        alert("Ride Cancelled");
+        currentRideId = null;
+        showFormScreen();
+        resetForm();
+    });
+}
+
 
         function logout() {
             firebase.auth().signOut().then(() => {
