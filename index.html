@@ -115,9 +115,10 @@
 
                     // LOGIC: Check Status
                     if (existingData.riderStatus === 'active') {
-                        // FIX 2: Correct Redirect to Dashboard
-                        window.location.href = "rider_screen_2.html";
-                    else {
+    window.location.href = "rider_screen_2.html";
+} else {
+    showRegistration(true);
+}
                         // User exists (e.g. Driver) but not Rider
                         showRegistration(true);
                     }
@@ -192,4 +193,5 @@
     </script>
 </body>
 </html>
+
 
