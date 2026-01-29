@@ -117,9 +117,7 @@
                     if (existingData.riderStatus === 'active') {
                         // FIX 2: Correct Redirect to Dashboard
                         window.location.href = "rider_screen_2.html";
-                    } else if (existingData.riderStatus === 'pending') {
-                        document.getElementById('view-pending').style.display = 'block';
-                    } else {
+                    else {
                         // User exists (e.g. Driver) but not Rider
                         showRegistration(true);
                     }
@@ -156,21 +154,22 @@
             if(!name || !phone) return alert("Please fill all fields.");
 
             const updates = {
-                name: name,
-                phone: phone,
-                email: user.email,
-                riderStatus: 'pending'
-            };
+    name: name,
+    phone: phone,
+    email: user.email,
+    riderStatus: 'active',     // ✅ ACTIVE IMMEDIATELY
+};
 
             // If completely new, init wallet
             if(!existingData) {
-                updates.joined = firebase.database.ServerValue.TIMESTAMP;
-                updates.wallet = 0; 
-            }
+    updates.joined = firebase.database.ServerValue.TIMESTAMP;
+    updates.wallet = 500; // ✅ STARTING BALANCE
+}
+
 
             db.ref('users/' + user.uid).update(updates).then(() => {
-                document.getElementById('view-register').style.display = 'none';
-                document.getElementById('view-pending').style.display = 'block';
+                window.location.href = "rider_screen_2.html";
+
             }).catch(err => {
                 alert("Error saving data: " + err.message);
             });
@@ -193,3 +192,4 @@
     </script>
 </body>
 </html>
+
