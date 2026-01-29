@@ -1,0 +1,51 @@
+<!DOCTYPE html>
+<html>
+<head>
+<title>Ride History</title>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<link rel="stylesheet" href="style.css">
+
+<script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-app.js"></script>
+<script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-auth.js"></script>
+<script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-database.js"></script>
+</head>
+<body>
+
+<div class="container">
+    <h2>📜 Ride History</h2>
+    <div id="history"></div>
+</div>
+
+<script src="firebase-init.js"></script>
+<script>
+firebase.auth().onAuthStateChanged(user => {
+    if (!user) return location.href = "index.html";
+
+    db.ref('requests')
+      .orderByChild('riderId')
+      .equalTo(user.uid)
+      .once('value')
+      .then(snapshot => {
+          const historyDiv = document.getElementById('history');
+          historyDiv.innerHTML = "";
+
+          snapshot.forEach(child => {
+              const r = child.val();
+
+              if (r.status === 'completed' || r.status.includes('cancelled')) {
+                  historyDiv.innerHTML += `
+                    <div class="card">
+                        <p><b>Pickup:</b> ${r.pickup}</p>
+                        <p><b>Drop:</b> ${r.drop}</p>
+                        <p><b>Status:</b> ${r.status}</p>
+                        <p><b>Date:</b> ${new Date(r.timestamp).toLocaleString()}</p>
+                        ${r.penaltyApplied ? `<p style="color:red;">Penalty: Rs.${r.penaltyApplied}</p>` : ""}
+                    </div>
+                  `;
+              }
+          });
+      });
+});
+</script>
+</body>
+</html>
