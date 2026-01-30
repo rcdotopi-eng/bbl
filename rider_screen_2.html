@@ -31,7 +31,8 @@
 
     <!-- ✅ TAB BUTTONS -->
     <div style="display:flex; gap:10px; margin-bottom:10px;">
-        <button class="btn-primary" onclick="showTab('request')">🚕 Request Ride</button>
+        <button id="btn-request-tab" class="btn-primary" onclick="showTab('request')">🚕 Request Ride</button>
+
         <button class="btn-secondary" onclick="showTab('history')">📜 History</button>
     </div>
 
@@ -196,20 +197,28 @@ function checkForActiveRides() {
 function showFormScreen() {
     document.getElementById('screen-form').classList.remove('hidden');
     document.getElementById('screen-status').classList.add('hidden');
-    document.getElementById('tab-history').classList.add('hidden');
-
+    
+    // Auto-fill phone
     document.getElementById('phone').value = userProfile.phone || "No Phone Found";
-    getGPS(true);
+    
+    // Try auto-fetch GPS immediately
+    getGPS(true); 
+
+    // ✅ Show Request Ride button when form is visible
+    document.getElementById('btn-request-tab').style.display = "inline-block";
 }
+
 
 function showStatusScreen(rideData) {
     document.getElementById('screen-form').classList.add('hidden');
     document.getElementById('screen-status').classList.remove('hidden');
-    document.getElementById('tab-history').classList.add('hidden');
-
+    
     document.getElementById('lbl-pickup').innerText = rideData.pickup;
     document.getElementById('lbl-drop').innerText = rideData.drop;
     document.getElementById('lbl-vehicle').innerText = rideData.vehicle;
+
+    // ✅ Hide Request Ride button when showing status
+    document.getElementById('btn-request-tab').style.display = "none";
 }
 
 // --- GPS LOGIC ---
@@ -335,24 +344,32 @@ function showRequestTab() {
     // Hide history first
     document.getElementById('tab-history').classList.add('hidden');
 
-    // Decide which screen to show
+    const btnRequest = document.getElementById('btn-request-tab');
+
     if (currentRideId) {
         // Active ride exists → show Status Screen
         db.ref('requests/' + currentRideId).once('value').then(snapshot => {
             const ride = snapshot.val();
             if (ride) {
                 showStatusScreen(ride);
+                // 🚫 Disable/hide Request Ride button
+                btnRequest.style.display = "none";
             } else {
-                // Ride deleted or cancelled → show form
+                // Ride deleted/cancelled → show form
                 showFormScreen();
                 currentRideId = null;
+                // ✅ Show Request Ride button
+                btnRequest.style.display = "inline-block";
             }
         });
     } else {
         // No active ride → show Form Screen
         showFormScreen();
+        // ✅ Show Request Ride button
+        btnRequest.style.display = "inline-block";
     }
 }
+
 // --- HISTORY ---
 function loadRideHistory() {
     const rideList = document.getElementById('rideList');
