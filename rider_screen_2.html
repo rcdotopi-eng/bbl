@@ -30,7 +30,7 @@
             <p>Checking profile & active rides...</p>
         </div>
 
-        <div id="screen-form" class="card hidden">
+        <div id="screen-form" class="card hidden" id="tab-request">
             <h3>Request a Ride</h3>
 
             <div class="input-group">
@@ -64,16 +64,22 @@
                 </button>
             </div>
 
-            <div style="display: flex; gap: 10px; flex-wrap: wrap;">
-    <button id="btn-submit" class="btn-primary" onclick="submitRide()">Submit Request</button>
-    <button id="btn-reset" class="btn-danger" onclick="resetForm()">Reset</button>
-    <button id="historyBtn" class="btn-secondary">Ride History</button>
+            <div style="display:flex; gap:10px; margin-bottom:10px;">
+    <button class="btn-primary" onclick="showTab('request')">🚕 Request Ride</button>
+    <button class="btn-secondary" onclick="showTab('history')">📜 History</button>
 </div>
 
+
 <!-- Add this right below as the container for history -->
-<div id="historyContainer" class="card hidden" style="margin-top: 20px; padding: 10px;">
-    <h3>Your Ride History</h3>
-    <ul id="rideList" style="list-style: none; padding: 0;"></ul>
+<div id="tab-history" class="card hidden" style="margin-top: 10px;">
+    <div style="display:flex; justify-content:space-between; align-items:center;">
+        <h3>📜 Ride History</h3>
+        <button class="btn-danger" onclick="clearAllHistory()" style="font-size:12px;">
+            Clear All
+        </button>
+    </div>
+
+    <ul id="rideList" style="list-style:none; padding:0; margin-top:10px;"></ul>
 </div>
 
         </div>
@@ -181,6 +187,18 @@ if (!userProfile.wallet || userProfile.wallet < 250) {
         function showFormScreen() {
             document.getElementById('screen-form').classList.remove('hidden');
             document.getElementById('screen-status').classList.add('hidden');
+            function showTab(tab) {
+    document.getElementById('screen-form').classList.add('hidden');
+    document.getElementById('tab-history').classList.add('hidden');
+
+    if (tab === 'request') {
+        document.getElementById('screen-form').classList.remove('hidden');
+    } else if (tab === 'history') {
+        document.getElementById('tab-history').classList.remove('hidden');
+        loadRideHistory();
+    }
+}
+
             
             // Auto-fill phone
             document.getElementById('phone').value = userProfile.phone || "No Phone Found";
@@ -360,6 +378,77 @@ if (!userProfile.wallet || userProfile.wallet < 250) {
                 window.location.href = "index.html";
             });
         }
+        function loadRideHistory() {
+    const rideList = document.getElementById('rideList');
+    rideList.innerHTML = '';
+
+    db.ref('requests')
+      .orderByChild('riderId')
+      .equalTo(currentUser.uid)
+      .once('value')
+      .then(snapshot => {
+
+        const rides = [];
+        snapshot.forEach(child => {
+            const ride = child.val();
+            ride._id = child.key;
+
+            if (ride.status === 'completed' || ride.status.startsWith('cancelled')) {
+                rides.push(ride);
+            }
+        });
+
+        if (rides.length === 0) {
+            rideList.innerHTML = "<li>No history found.</li>";
+            return;
+        }
+
+        rides.sort((a,b) => b.timestamp - a.timestamp);
+
+        rides.forEach(ride => {
+            const li = document.createElement('li');
+            li.style.borderBottom = "1px solid #eee";
+            li.style.padding = "8px 0";
+
+            li.innerHTML = `
+                <strong>${ride.status}</strong><br>
+                ${ride.pickup} → ${ride.drop}<br>
+                <small>${new Date(ride.timestamp).toLocaleString()}</small><br>
+                <button onclick="deleteSingleHistory('${ride._id}')"
+                        style="margin-top:5px;font-size:11px;">
+                    ❌ Delete
+                </button>
+            `;
+            rideList.appendChild(li);
+        });
+    });
+}
+function deleteSingleHistory(rideId) {
+    if (!confirm("Delete this ride from history?")) return;
+    db.ref('requests/' + rideId).remove()
+      .then(() => loadRideHistory());
+}
+
+function clearAllHistory() {
+    if (!confirm("Delete ALL old history?")) return;
+
+    db.ref('requests')
+      .orderByChild('riderId')
+      .equalTo(currentUser.uid)
+      .once('value')
+      .then(snapshot => {
+        const updates = {};
+        snapshot.forEach(child => {
+            const r = child.val();
+            if (r.status === 'completed' || r.status.startsWith('cancelled')) {
+                updates[child.key] = null;
+            }
+        });
+        return db.ref('requests').update(updates);
+      })
+      .then(() => loadRideHistory());
+}
+
 document.getElementById('historyBtn').addEventListener('click', async () => {
     const historyContainer = document.getElementById('historyContainer');
     const rideList = document.getElementById('rideList');
