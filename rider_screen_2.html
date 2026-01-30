@@ -87,7 +87,8 @@
     <!-- 📜 HISTORY SCREEN WITH BACK BUTTON -->
 <div id="tab-history" class="card hidden" style="margin-top: 10px;">
     <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px;">
-        <button class="btn-secondary" onclick="showTab('request')" style="font-size:12px;">
+        <!-- ✅ Updated Back button -->
+        <button class="btn-secondary" onclick="showRequestTab()" style="font-size:12px;">
             ⬅ Back
         </button>
         <h3 style="margin:0;">📜 Ride History</h3>
@@ -330,7 +331,28 @@ function showTab(tab) {
         loadRideHistory();
     }
 }
+function showRequestTab() {
+    // Hide history first
+    document.getElementById('tab-history').classList.add('hidden');
 
+    // Decide which screen to show
+    if (currentRideId) {
+        // Active ride exists → show Status Screen
+        db.ref('requests/' + currentRideId).once('value').then(snapshot => {
+            const ride = snapshot.val();
+            if (ride) {
+                showStatusScreen(ride);
+            } else {
+                // Ride deleted or cancelled → show form
+                showFormScreen();
+                currentRideId = null;
+            }
+        });
+    } else {
+        // No active ride → show Form Screen
+        showFormScreen();
+    }
+}
 // --- HISTORY ---
 function loadRideHistory() {
     const rideList = document.getElementById('rideList');
