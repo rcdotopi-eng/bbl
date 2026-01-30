@@ -84,17 +84,21 @@
 
     </div>
 
-    <!-- 📜 HISTORY SCREEN -->
-    <div id="tab-history" class="card hidden" style="margin-top: 10px;">
-        <div style="display:flex; justify-content:space-between; align-items:center;">
-            <h3>📜 Ride History</h3>
-            <button class="btn-danger" onclick="clearAllHistory()" style="font-size:12px;">
-                Clear All
-            </button>
-        </div>
-
-        <ul id="rideList" style="list-style:none; padding:0; margin-top:10px;"></ul>
+    <!-- 📜 HISTORY SCREEN WITH BACK BUTTON -->
+<div id="tab-history" class="card hidden" style="margin-top: 10px;">
+    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px;">
+        <button class="btn-secondary" onclick="showTab('request')" style="font-size:12px;">
+            ⬅ Back
+        </button>
+        <h3 style="margin:0;">📜 Ride History</h3>
+        <button class="btn-danger" onclick="clearAllHistory()" style="font-size:12px;">
+            Clear All
+        </button>
     </div>
+
+    <ul id="rideList" style="list-style:none; padding:0; margin-top:10px;"></ul>
+</div>
+
 
     <!-- ✅ STATUS SCREEN -->
     <div id="screen-status" class="card hidden" style="text-align: center;">
