@@ -187,17 +187,7 @@ if (!userProfile.wallet || userProfile.wallet < 250) {
         function showFormScreen() {
             document.getElementById('screen-form').classList.remove('hidden');
             document.getElementById('screen-status').classList.add('hidden');
-            function showTab(tab) {
-    document.getElementById('screen-form').classList.add('hidden');
-    document.getElementById('tab-history').classList.add('hidden');
-
-    if (tab === 'request') {
-        document.getElementById('screen-form').classList.remove('hidden');
-    } else if (tab === 'history') {
-        document.getElementById('tab-history').classList.remove('hidden');
-        loadRideHistory();
-    }
-}
+            
 
             
             // Auto-fill phone
@@ -378,6 +368,19 @@ if (!userProfile.wallet || userProfile.wallet < 250) {
                 window.location.href = "index.html";
             });
         }
+        function showTab(tab) {
+    document.getElementById('screen-form').classList.add('hidden');
+    document.getElementById('tab-history').classList.add('hidden');
+
+    if (tab === 'request') {
+        document.getElementById('screen-form').classList.remove('hidden');
+    } 
+    else if (tab === 'history') {
+        document.getElementById('tab-history').classList.remove('hidden');
+        loadRideHistory();
+    }
+}
+
         function loadRideHistory() {
     const rideList = document.getElementById('rideList');
     rideList.innerHTML = '';
