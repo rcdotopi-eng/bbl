@@ -15,445 +15,348 @@
         .gps-status { font-size: 12px; margin-top: 5px; color: #666; }
         .gps-error { color: #dc3545; font-weight: bold; }
         .gps-success { color: #28a745; font-weight: bold; }
+        .btn-primary { padding: 10px 15px; background: #007bff; color: #fff; border: none; border-radius: 5px; cursor: pointer; }
+        .btn-secondary { padding: 10px 15px; background: #6c757d; color: #fff; border: none; border-radius: 5px; cursor: pointer; }
+        .btn-danger { padding: 5px 10px; background: #dc3545; color: #fff; border: none; border-radius: 5px; cursor: pointer; }
     </style>
 </head>
 <body>
 
-    <div class="container">
+<div class="container">
+    
+    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
+        <h2 style="margin:0;">🚖 RideLink</h2>
+        <button onclick="logout()" style="width: auto; padding: 5px 10px; font-size: 12px; background: #eee; color: #333;">Logout</button>
+    </div>
+
+    <!-- ✅ TAB BUTTONS -->
+    <div style="display:flex; gap:10px; margin-bottom:10px;">
+        <button class="btn-primary" onclick="showTab('request')">🚕 Request Ride</button>
+        <button class="btn-secondary" onclick="showTab('history')">📜 History</button>
+    </div>
+
+    <div id="screen-loading" class="card" style="text-align: center;">
+        <p>Checking profile & active rides...</p>
+    </div>
+
+    <!-- 🚕 REQUEST FORM -->
+    <div id="screen-form" class="card hidden">
+        <h3>Request a Ride</h3>
+
+        <div class="input-group">
+            <label>Pickup Location</label>
+            <input type="text" id="pickup" placeholder="Enter Pickup Point">
+        </div>
+
+        <div class="input-group">
+            <label>Drop Point</label>
+            <input type="text" id="drop" placeholder="Enter Destination">
+        </div>
+
+        <div class="input-group">
+            <label>Vehicle Type</label>
+            <select id="vehicle">
+                <option value="Bike">Bike 🏍️</option>
+                <option value="Rickshaw">Rickshaw 🛺</option>
+                <option value="Car">Car 🚗</option>
+            </select>
+        </div>
+
+        <div class="input-group">
+            <label>Your Phone</label>
+            <input type="text" id="phone" readonly style="background: #eee; color: #555;">
+        </div>
+
+        <div id="gps-area" style="margin-bottom: 15px;">
+            <p id="gps-msg" class="gps-status">📍 GPS coordinates required</p>
+            <button id="btn-manual-gps" class="btn-primary hidden" onclick="getGPS()" style="background:#6c757d;">
+                📍 Click to Fetch GPS Manually
+            </button>
+        </div>
+
+        <!-- ✅ REAL SUBMIT & RESET BUTTONS -->
+        <button id="btn-submit" class="btn-primary" onclick="submitRide()">
+            🚕 Submit Ride Request
+        </button>
+        <button id="btn-reset" class="btn-secondary" onclick="resetForm()">
+            Reset
+        </button>
+
+    </div>
+
+    <!-- 📜 HISTORY SCREEN -->
+    <div id="tab-history" class="card hidden" style="margin-top: 10px;">
+        <div style="display:flex; justify-content:space-between; align-items:center;">
+            <h3>📜 Ride History</h3>
+            <button class="btn-danger" onclick="clearAllHistory()" style="font-size:12px;">
+                Clear All
+            </button>
+        </div>
+
+        <ul id="rideList" style="list-style:none; padding:0; margin-top:10px;"></ul>
+    </div>
+
+    <!-- ✅ STATUS SCREEN -->
+    <div id="screen-status" class="card hidden" style="text-align: center;">
+        <div style="font-size: 40px;">✅</div>
+        <h3 style="color: #28a745;">Request Successfully Sent</h3>
         
-        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
-            <h2 style="margin:0;">🚖 RideLink</h2>
-            <button onclick="logout()" style="width: auto; padding: 5px 10px; font-size: 12px; background: #eee; color: #333;">Logout</button>
+        <div style="background: #f8f9fa; padding: 15px; border-radius: 8px; margin: 15px 0; text-align: left;">
+            <p><strong>Status:</strong> <span style="color: #e67e22; font-weight: bold;">Pending (Waiting for Drivers)</span></p>
+            <p><strong>Pickup:</strong> <span id="lbl-pickup">...</span></p>
+            <p><strong>Drop:</strong> <span id="lbl-drop">...</span></p>
+            <p><strong>Vehicle:</strong> <span id="lbl-vehicle">...</span></p>
         </div>
 
-        <div id="screen-loading" class="card" style="text-align: center;">
-            <p>Checking profile & active rides...</p>
-        </div>
-
-        <div id="screen-form" class="card hidden" id="tab-request">
-            <h3>Request a Ride</h3>
-
-            <div class="input-group">
-                <label>Pickup Location</label>
-                <input type="text" id="pickup" placeholder="Enter Pickup Point">
-            </div>
-
-            <div class="input-group">
-                <label>Drop Point</label>
-                <input type="text" id="drop" placeholder="Enter Destination">
-            </div>
-
-            <div class="input-group">
-                <label>Vehicle Type</label>
-                <select id="vehicle">
-                    <option value="Bike">Bike 🏍️</option>
-                    <option value="Rickshaw">Rickshaw 🛺</option>
-                    <option value="Car">Car 🚗</option>
-                </select>
-            </div>
-
-            <div class="input-group">
-                <label>Your Phone</label>
-                <input type="text" id="phone" readonly style="background: #eee; color: #555;">
-            </div>
-
-            <div id="gps-area" style="margin-bottom: 15px;">
-                <p id="gps-msg" class="gps-status">📍 GPS coordinates required</p>
-                <button id="btn-manual-gps" class="btn-primary hidden" onclick="getGPS()" style="padding: 10px; background: #6c757d;">
-                    📍 Click to Fetch GPS Manually
-                </button>
-            </div>
-
-            <div style="display:flex; gap:10px; margin-bottom:10px;">
-    <button class="btn-primary" onclick="showTab('request')">🚕 Request Ride</button>
-    <button class="btn-secondary" onclick="showTab('history')">📜 History</button>
-</div>
-
-
-<!-- Add this right below as the container for history -->
-<div id="tab-history" class="card hidden" style="margin-top: 10px;">
-    <div style="display:flex; justify-content:space-between; align-items:center;">
-        <h3>📜 Ride History</h3>
-        <button class="btn-danger" onclick="clearAllHistory()" style="font-size:12px;">
-            Clear All
+        <button disabled style="background: #ddd; color: #555; cursor: default; margin-bottom: 10px;">
+            Submitted (Waiting...)
+        </button>
+        
+        <button class="btn-danger" onclick="cancelCurrentRide()">
+            Cancel Request
         </button>
     </div>
 
-    <ul id="rideList" style="list-style:none; padding:0; margin-top:10px;"></ul>
 </div>
 
-        </div>
+<script src="firebase-init.js"></script>
+<script src="rider_logic.js"></script>
+<script>
+let currentUser = null;
+var currentRideId = null;
+let userProfile = null;
+let userLocation = null;
 
-        <div id="screen-status" class="card hidden" style="text-align: center;">
-            <div style="font-size: 40px;">✅</div>
-            <h3 style="color: #28a745;">Request Successfully Sent</h3>
-            
-            <div style="background: #f8f9fa; padding: 15px; border-radius: 8px; margin: 15px 0; text-align: left;">
-                <p><strong>Status:</strong> <span style="color: #e67e22; font-weight: bold;">Pending (Waiting for Drivers)</span></p>
-                <p><strong>Pickup:</strong> <span id="lbl-pickup">...</span></p>
-                <p><strong>Drop:</strong> <span id="lbl-drop">...</span></p>
-                <p><strong>Vehicle:</strong> <span id="lbl-vehicle">...</span></p>
-            </div>
+// --- AUTH & PROFILE CHECK ---
+firebase.auth().onAuthStateChanged((user) => {
+    if (user) {
+        currentUser = user;
+        initialCheck();
+    } else {
+        window.location.href = "index.html";
+    }
+});
 
-            <button disabled style="background: #ddd; color: #555; cursor: default; margin-bottom: 10px;">
-                Submitted (Waiting...)
-            </button>
-            
-            <button class="btn-danger" onclick="cancelCurrentRide()">
-                Cancel Request
-            </button>
-        </div>
+function initialCheck() {
+    const uid = currentUser.uid;
+    db.ref('users/' + uid).once('value').then(snap => {
+        if (!snap.exists()) return window.location.href = "index.html";
+        userProfile = snap.val();
 
-    </div>
+        if (userProfile.riderStatus !== 'active') {
+            alert("Account not active. Please complete registration.");
+            window.location.href = "index.html";
+            return;
+        }
 
-    <script src="firebase-init.js"></script>
-    <script src="rider_logic.js"></script>
-    <script>
-        let currentUser = null;
-        var currentRideId = null;
-        let userProfile = null;
-        let userLocation = null; // Stores {lat, lng}
+        if (!userProfile.wallet || userProfile.wallet < 250) {
+            alert("❌ Insufficient wallet balance.\nMinimum Rs.250 required to book a ride.");
+            window.location.href = "wallet.html";
+            return;
+        }
 
-        // --- 1. AUTH & SAFETY CHECKS ---
-        firebase.auth().onAuthStateChanged((user) => {
-            if (user) {
-                currentUser = user;
-                initialCheck();
-            } else {
-                window.location.href = "index.html";
+        checkForActiveRides();
+    });
+}
+
+function checkForActiveRides() {
+    db.ref('requests').orderByChild('riderId').equalTo(currentUser.uid)
+      .limitToLast(1).once('value').then(snap => {
+        
+        let hasActive = false;
+        let activeRideData = null;
+        let activeRideKey = null;
+
+        snap.forEach(child => {
+            const r = child.val();
+            if (['pending','accepted','confirmed'].includes(r.status)) {
+                hasActive = true;
+                activeRideData = r;
+                activeRideKey = child.key;
             }
         });
 
-        function initialCheck() {
-            const uid = currentUser.uid;
-            
-            // 1. Get Profile
-            db.ref('users/' + uid).once('value').then(snap => {
-                if (!snap.exists()) return window.location.href = "index.html";
-                
-                userProfile = snap.val();
+        document.getElementById('screen-loading').classList.add('hidden');
 
-                // Check Active Status
-                if (userProfile.riderStatus !== 'active') {
-                    alert("Account not active. Please complete registration.");
-                    window.location.href = "index.html";
-                    return;
-                }
-// 🚫 Block ride if wallet < 250
-if (!userProfile.wallet || userProfile.wallet < 250) {
-    alert("❌ Insufficient wallet balance.\nMinimum Rs.250 required to book a ride.");
-    window.location.href = "wallet.html"; // or show message
-    return;
+        if (hasActive) {
+            currentRideId = activeRideKey;
+            showStatusScreen(activeRideData);
+        } else {
+            showFormScreen();
+        }
+    });
 }
-                // Check for Existing Active Rides
-                checkForActiveRides();
-            });
-        }
 
-        function checkForActiveRides() {
-            // Query requests where riderId == currentUser AND status != cancelled/completed
-            // Since complex queries need indexes, we will client-filter for this MVP
-            db.ref('requests').orderByChild('riderId').equalTo(currentUser.uid)
-              .limitToLast(1).once('value').then(snap => {
-                
-                let hasActive = false;
-                let activeRideData = null;
-                let activeRideKey = null;
+// --- SCREEN LOGIC ---
+function showFormScreen() {
+    document.getElementById('screen-form').classList.remove('hidden');
+    document.getElementById('screen-status').classList.add('hidden');
+    document.getElementById('tab-history').classList.add('hidden');
 
-                snap.forEach(child => {
-                    const r = child.val();
-                    if (r.status === 'pending' || r.status === 'accepted' || r.status === 'confirmed') {
-                        hasActive = true;
-                        activeRideData = r;
-                        activeRideKey = child.key;
-                    }
-                });
+    document.getElementById('phone').value = userProfile.phone || "No Phone Found";
+    getGPS(true);
+}
 
-                document.getElementById('screen-loading').classList.add('hidden');
+function showStatusScreen(rideData) {
+    document.getElementById('screen-form').classList.add('hidden');
+    document.getElementById('screen-status').classList.remove('hidden');
+    document.getElementById('tab-history').classList.add('hidden');
 
-                if (hasActive) {
-                    // Show Status Screen
-                    currentRideId = activeRideKey;
-                    showStatusScreen(activeRideData);
-                } else {
-                    // Show Form Screen
-                    showFormScreen();
-                }
-            });
-        }
+    document.getElementById('lbl-pickup').innerText = rideData.pickup;
+    document.getElementById('lbl-drop').innerText = rideData.drop;
+    document.getElementById('lbl-vehicle').innerText = rideData.vehicle;
+}
 
-        // --- 2. SCREEN LOGIC ---
+// --- GPS LOGIC ---
+function getGPS(isAuto = false) {
+    const msg = document.getElementById('gps-msg');
+    const manualBtn = document.getElementById('btn-manual-gps');
+    msg.innerText = isAuto ? "📍 Auto-fetching location..." : "📍 Fetching location...";
+    msg.className = "gps-status";
+    manualBtn.classList.add('hidden');
 
-        function showFormScreen() {
-            document.getElementById('screen-form').classList.remove('hidden');
-            document.getElementById('screen-status').classList.add('hidden');
-            
+    if (!navigator.geolocation) {
+        msg.innerText = "❌ GPS not supported";
+        msg.className = "gps-status gps-error";
+        return;
+    }
 
-            
-            // Auto-fill phone
-            document.getElementById('phone').value = userProfile.phone || "No Phone Found";
-            
-            // Try auto-fetch GPS immediately
-            getGPS(true); 
-        }
-
-        function showStatusScreen(rideData) {
-            document.getElementById('screen-form').classList.add('hidden');
-            document.getElementById('screen-status').classList.remove('hidden');
-            
-            document.getElementById('lbl-pickup').innerText = rideData.pickup;
-            document.getElementById('lbl-drop').innerText = rideData.drop;
-            document.getElementById('lbl-vehicle').innerText = rideData.vehicle;
-        }
-
-        // --- 3. GPS LOGIC (The Core Requirement) ---
-        
-        function getGPS(isAuto = false) {
-            const msg = document.getElementById('gps-msg');
-            const manualBtn = document.getElementById('btn-manual-gps');
-
-            msg.innerText = isAuto ? "📍 Auto-fetching location..." : "📍 Fetching location...";
-            msg.className = "gps-status";
+    navigator.geolocation.getCurrentPosition(
+        (pos) => {
+            userLocation = { lat: pos.coords.latitude, lng: pos.coords.longitude };
+            msg.innerText = "✅ Location Locked";
+            msg.className = "gps-status gps-success";
             manualBtn.classList.add('hidden');
+        }, 
+        (err) => {
+            console.error(err);
+            userLocation = null;
+            msg.innerText = "⚠️ GPS Failed. Please click below.";
+            msg.className = "gps-status gps-error";
+            manualBtn.classList.remove('hidden');
+        },
+        { enableHighAccuracy:true, timeout:10000, maximumAge:0 }
+    );
+}
 
-            if (!navigator.geolocation) {
-                msg.innerText = "❌ GPS not supported";
-                msg.className = "gps-status gps-error";
-                return;
-            }
+// --- SUBMIT ---
+function submitRide() {
+    const pickup = document.getElementById('pickup').value;
+    const drop = document.getElementById('drop').value;
+    const vehicle = document.getElementById('vehicle').value;
+    if (!pickup || !drop) return alert("Please fill all fields");
+    if (!userLocation) return alert("GPS Coordinates missing! Please click 'Fetch GPS Manually'.");
 
-            // 10 Second Timeout Logic
-            const gpsOptions = { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 };
+    const btnSubmit = document.getElementById('btn-submit');
+    const btnReset = document.getElementById('btn-reset');
+    btnSubmit.innerText = "Sending...";
+    btnSubmit.disabled = true;
+    btnReset.classList.add('hidden');
 
-            navigator.geolocation.getCurrentPosition(
-                (pos) => {
-                    // Success
-                    userLocation = {
-                        lat: pos.coords.latitude,
-                        lng: pos.coords.longitude
-                    };
-                    msg.innerText = "✅ Location Locked";
-                    msg.className = "gps-status gps-success";
-                    manualBtn.classList.add('hidden');
-                }, 
-                (err) => {
-                    // Fail
-                    console.error(err);
-                    userLocation = null;
-                    msg.innerText = "⚠️ GPS Failed. Please click below.";
-                    msg.className = "gps-status gps-error";
-                    manualBtn.classList.remove('hidden'); // Show Manual Button
-                }, 
-                gpsOptions
-            );
-        }
+    const requestData = {
+        riderId: currentUser.uid,
+        riderName: userProfile.name,
+        riderPhone: userProfile.phone,
+        pickup, drop, vehicle,
+        pickup_lat: userLocation.lat,
+        pickup_lng: userLocation.lng,
+        status: 'pending',
+        timestamp: firebase.database.ServerValue.TIMESTAMP
+    };
 
-        // --- 4. SUBMIT LOGIC ---
+    const newRef = db.ref('requests').push();
+    currentRideId = newRef.key;
+    newRef.set(requestData).then(() => {
+        btnSubmit.innerText = "Submit Request";
+        btnSubmit.disabled = false;
+        btnReset.classList.remove('hidden');
+        showStatusScreen(requestData);
+    }).catch(err => {
+        alert("Error: " + err.message);
+        btnSubmit.innerText = "Submit Request";
+        btnSubmit.disabled = false;
+        btnReset.classList.remove('hidden');
+    });
+}
 
-        function submitRide() {
-            // Validate Inputs
-            const pickup = document.getElementById('pickup').value;
-            const drop = document.getElementById('drop').value;
-            const vehicle = document.getElementById('vehicle').value;
+function resetForm() {
+    document.getElementById('pickup').value = "";
+    document.getElementById('drop').value = "";
+    getGPS(true);
+}
 
-            if (!pickup || !drop) return alert("Please fill all fields");
-
-            // Validate GPS
-            if (!userLocation) {
-                alert("GPS Coordinates missing! Please click 'Fetch GPS Manually'.");
-                return;
-            }
-
-            // UI Changes
-            const btnSubmit = document.getElementById('btn-submit');
-            const btnReset = document.getElementById('btn-reset');
-            
-            btnSubmit.innerText = "Sending...";
-            btnSubmit.disabled = true;
-            btnReset.classList.add('hidden');
-           
-
-            // Data Object
-            const requestData = {
-                riderId: currentUser.uid,
-                riderName: userProfile.name,
-                riderPhone: userProfile.phone,
-                pickup: pickup,
-                drop: drop,
-                vehicle: vehicle,
-                pickup_lat: userLocation.lat,
-                pickup_lng: userLocation.lng,
-                status: 'pending',
-                timestamp: firebase.database.ServerValue.TIMESTAMP
-            };
-
-            // Push to DB
-            const newRef = db.ref('requests').push();
-            currentRideId = newRef.key;
-
-            newRef.set(requestData).then(() => {
-                // Success
-                btnSubmit.innerText = "Submit Request";
-                btnSubmit.disabled = false;
-                btnReset.classList.remove('hidden');
-                
-                showStatusScreen(requestData);
-            }).catch(err => {
-                alert("Error: " + err.message);
-                btnSubmit.innerText = "Submit Request";
-                btnSubmit.disabled = false;
-                btnReset.classList.remove('hidden');
-            });
-        }
-
-        function resetForm() {
-            document.getElementById('pickup').value = "";
-            document.getElementById('drop').value = "";
-            getGPS(true); // Retrigger GPS
-        }
-
-        // --- 5. CANCEL LOGIC ---
-
-        function cancelCurrentRide() {
+// --- CANCEL ---
+function cancelCurrentRide() {
     if (!currentRideId) return;
     if (!confirm("Are you sure you want to cancel this ride?")) return;
-
     const uid = currentUser.uid;
 
-    // 1️⃣ Get ride data first
     db.ref('requests/' + currentRideId).once('value').then(snapshot => {
         const ride = snapshot.val();
         if (!ride) return;
 
-        // 2️⃣ If ride was CONFIRMED → apply penalty
         if (ride.status === 'confirmed') {
-
-            // Deduct Rs.250 safely from wallet
-            db.ref('users/' + uid + '/wallet').transaction(balance => {
-                if (balance >= 250) {
-                    return balance - 250;
-                }
-                return balance;
-            });
-
-            // Update ride with penalty info
+            db.ref('users/' + uid + '/wallet').transaction(balance => (balance >= 250 ? balance-250 : balance));
             db.ref('requests/' + currentRideId).update({
-                status: 'cancelled_by_rider',
-                penaltyApplied: 250,
-                cancelledAt: firebase.database.ServerValue.TIMESTAMP
+                status:'cancelled_by_rider', penaltyApplied:250, cancelledAt: firebase.database.ServerValue.TIMESTAMP
             });
-
             alert("❌ Ride cancelled. Rs.250 penalty applied.");
-
         } else {
-            // 3️⃣ Pending / not confirmed → NO penalty
-            db.ref('requests/' + currentRideId).update({
-                status: 'cancelled_by_rider',
-                cancelledAt: firebase.database.ServerValue.TIMESTAMP
-            });
-
+            db.ref('requests/' + currentRideId).update({status:'cancelled_by_rider', cancelledAt: firebase.database.ServerValue.TIMESTAMP});
             alert("Ride cancelled.");
         }
 
-        // 4️⃣ Reset UI
         currentRideId = null;
         showFormScreen();
         resetForm();
     });
 }
 
+function logout() { firebase.auth().signOut().then(()=>window.location.href="index.html"); }
 
-        function logout() {
-            firebase.auth().signOut().then(() => {
-                window.location.href = "index.html";
-            });
-        }
-        function showTab(tab) {
+// --- TAB LOGIC ---
+function showTab(tab) {
     document.getElementById('screen-form').classList.add('hidden');
+    document.getElementById('screen-status').classList.add('hidden');
     document.getElementById('tab-history').classList.add('hidden');
 
-    if (tab === 'request') {
-        document.getElementById('screen-form').classList.remove('hidden');
-    } 
-    else if (tab === 'history') {
+    if (tab==='request') showFormScreen();
+    else if(tab==='history') {
         document.getElementById('tab-history').classList.remove('hidden');
         loadRideHistory();
     }
 }
 
-        function loadRideHistory() {
+// --- HISTORY ---
+function loadRideHistory() {
     const rideList = document.getElementById('rideList');
     rideList.innerHTML = '';
-
-    db.ref('requests')
-      .orderByChild('riderId')
-      .equalTo(currentUser.uid)
-      .once('value')
-      .then(snapshot => {
-
-        const rides = [];
-        snapshot.forEach(child => {
+    db.ref('requests').orderByChild('riderId').equalTo(currentUser.uid).once('value').then(snapshot=>{
+        const rides=[];
+        snapshot.forEach(child=>{
             const ride = child.val();
             ride._id = child.key;
-
-            if (ride.status === 'completed' || ride.status.startsWith('cancelled')) {
-                rides.push(ride);
-            }
+            if(ride.status==='completed' || ride.status.startsWith('cancelled')) rides.push(ride);
         });
-
-        if (rides.length === 0) {
-            rideList.innerHTML = "<li>No history found.</li>";
-            return;
-        }
-
-        rides.sort((a,b) => b.timestamp - a.timestamp);
-
-        rides.forEach(ride => {
-            const li = document.createElement('li');
-            li.style.borderBottom = "1px solid #eee";
-            li.style.padding = "8px 0";
-
-            li.innerHTML = `
+        if(rides.length===0){ rideList.innerHTML="<li>No history found.</li>"; return; }
+        rides.sort((a,b)=>b.timestamp-a.timestamp);
+        rides.forEach(ride=>{
+            const li=document.createElement('li');
+            li.style.borderBottom="1px solid #eee";
+            li.style.padding="8px 0";
+            li.innerHTML=`
                 <strong>${ride.status}</strong><br>
                 ${ride.pickup} → ${ride.drop}<br>
                 <small>${new Date(ride.timestamp).toLocaleString()}</small><br>
-                <button onclick="deleteSingleHistory('${ride._id}')"
-                        style="margin-top:5px;font-size:11px;">
-                    ❌ Delete
-                </button>
+                <button onclick="deleteSingleHistory('${ride._id}')" style="margin-top:5px;font-size:11px;">❌ Delete</button>
             `;
             rideList.appendChild(li);
         });
     });
 }
-function deleteSingleHistory(rideId) {
-    if (!confirm("Delete this ride from history?")) return;
-    db.ref('requests/' + rideId).remove()
-      .then(() => loadRideHistory());
-}
+function deleteSingleHistory(id){ if(!confirm("Delete this ride from history?")) return; db.ref('requests/'+id).remove().then(()=>loadRideHistory()); }
+function clearAllHistory(){ if(!confirm("Delete ALL old history?")) return; db.ref('requests').orderByChild('riderId').equalTo(currentUser.uid).once('value').then(snapshot=>{ const updates={}; snapshot.forEach(child=>{ const r=child.val(); if(r.status==='completed'||r.status.startsWith('cancelled')) updates[child.key]=null; }); return db.ref('requests').update(updates); }).then(()=>loadRideHistory()); }
 
-function clearAllHistory() {
-    if (!confirm("Delete ALL old history?")) return;
-
-    db.ref('requests')
-      .orderByChild('riderId')
-      .equalTo(currentUser.uid)
-      .once('value')
-      .then(snapshot => {
-        const updates = {};
-        snapshot.forEach(child => {
-            const r = child.val();
-            if (r.status === 'completed' || r.status.startsWith('cancelled')) {
-                updates[child.key] = null;
-            }
-        });
-        return db.ref('requests').update(updates);
-      })
-      .then(() => loadRideHistory());
-}
-
-
-
-    </script>
+</script>
 </body>
 </html>
